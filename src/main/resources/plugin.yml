@@ -1,0 +1,7 @@
+name: KeftemeSyringe
+version: '${project.version}'
+main: me.gaf1.keftemesyringe.Plugin
+api-version: '1.16'
+
+commands:
+  syringe:
