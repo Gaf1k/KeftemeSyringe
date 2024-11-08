@@ -15,6 +15,9 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 
 public class Syringe {
@@ -25,19 +28,23 @@ public class Syringe {
     private List<ItemStack> syringeStack = new ArrayList<>();
 
     public void getSyringe(Player player){
-        syringe = new ItemStack(Material.SCUTE);
+        String materialType = Plugin.getInstance().getConfig().getString("Material").toUpperCase();
+        Material material = Material.valueOf(materialType);
+        syringe = new ItemStack(material);
         ItemMeta meta = syringe.getItemMeta();
 
-        meta.setDisplayName(ChatColor.translateAlternateColorCodes('&',"&fМедицинский шприц"));
-        meta.setCustomModelData(1);
+        meta.setDisplayName(color(Plugin.getInstance().getConfig().getString("Name")));
+        meta.setCustomModelData(Plugin.getInstance().getConfig().getInt("Custom_model_data"));
 
         meta.getPersistentDataContainer().set(NamespacedKey.fromString("syringe"), PersistentDataType.INTEGER,1);
 
         int value = syringeStack.size()+1;
-        if (syringeStack.isEmpty()) {
-            meta.getPersistentDataContainer().set(NamespacedKey.fromString("stack"), PersistentDataType.INTEGER, 1);
-        }else {
-            meta.getPersistentDataContainer().set(NamespacedKey.fromString("stack"), PersistentDataType.INTEGER, value);
+        if (Plugin.getInstance().getConfig().getBoolean("One_item_in_stack")) {
+            if (syringeStack.isEmpty()) {
+                meta.getPersistentDataContainer().set(NamespacedKey.fromString("stack"), PersistentDataType.INTEGER, 1);
+            } else {
+                meta.getPersistentDataContainer().set(NamespacedKey.fromString("stack"), PersistentDataType.INTEGER, value);
+            }
         }
 
         syringe.setItemMeta(meta);
@@ -74,19 +81,30 @@ public class Syringe {
                 }
 
                 else if (ctr==5) {
+
                     msg = ChatColor.translateAlternateColorCodes('&', "&a░░░░░");
                     player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(msg));
+
+                    if (player.getHealth()<=17) {
+                        player.setHealth(player.getHealth() + Plugin.getInstance().getConfig().getInt("Instant_health_recovery"));
+                    }
+
                         new BukkitRunnable(){
-                            int amount = 1;
+                            int amount = Plugin.getInstance().getConfig().getInt("Interval_health_recovery");
                             @Override
                             public void run() {
-                                player.addPotionEffect(new PotionEffect(PotionEffectType.HEAL,1,0));
                                 if (amount<=0){
                                     cancel();
                                 }
-                                amount--;
+                                if (player.getHealth()!=20) {
+                                    player.setHealth(player.getHealth() + 1);
+                                    amount--;
+                                }else {
+                                    cancel();
+                                }
                             }
-                        }.runTaskTimer(Plugin.getInstance(),0,20L);
+                        }.runTaskTimer(Plugin.getInstance(),0,5L);
+
 
                     if (player.getInventory().contains(syringe)){
                         player.getInventory().removeItem(syringe);
@@ -97,5 +115,11 @@ public class Syringe {
                 ctr++;
             }
         }.runTaskTimer(Plugin.getInstance(),0,20L);
+    }
+
+    private static final Pattern HEX_PATTERN = Pattern.compile("&#([A-Fa-f0-9])([A-Fa-f0-9])([A-Fa-f0-9])([A-Fa-f0-9])([A-Fa-f0-9])([A-Fa-f0-9])");
+
+    public static String color(String message) {
+        return ChatColor.translateAlternateColorCodes('&', HEX_PATTERN.matcher(message).replaceAll("&x&$1&$2&$3&$4&$5&$6"));
     }
 }
